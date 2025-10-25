@@ -1,6 +1,6 @@
 
 const defaults = {
-  tone: 'friendly',
+  tone: 'conversational',
   sumMode: 'sentences',
   sumCount: 5,
   engMaxChars: 20000

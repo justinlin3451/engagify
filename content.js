@@ -228,7 +228,17 @@ chrome.runtime.onMessage.addListener(async (msg) => {
       // Show loading screen
       showLoadingScreen('Engagifying content...');
 
-      const prompt = 'Rewrite the following webpage content in an engaging, ' + cfg.tone + ' tone while preserving accuracy. Make it visually appealing with proper formatting: use bold text for key points, different font sizes for headings, and colors to highlight important information. Keep the original information but make it easier to read and more engaging. Use HTML tags like <h1>, <h2>, <h3>, <strong>, <em>, <span style="color: #...">, <span style="font-size: ...">, etc. Avoid emojis. Text START<<' + text + '>>Text END';
+      // Create tone-specific prompts
+      let tonePrompt = '';
+      if (cfg.tone === 'concise') {
+        tonePrompt = 'Rewrite the following webpage content in a CONCISE, direct tone. Be brief and to the point. Use short sentences and bullet points. Focus on key facts and essential information only.';
+      } else if (cfg.tone === 'conversational') {
+        tonePrompt = 'Rewrite the following webpage content in a CONVERSATIONAL, friendly tone. Use "you" and "we" language. Make it feel like a conversation with the reader. Be engaging and approachable.';
+      } else if (cfg.tone === 'academic') {
+        tonePrompt = 'Rewrite the following webpage content in an ACADEMIC, formal tone. Use precise language and technical terms. Structure information logically with clear arguments and evidence.';
+      }
+
+      const prompt = tonePrompt + ' Make it visually appealing with proper formatting: use bold text for key points, different font sizes for headings, and colors to highlight important information. Keep the original information but make it easier to read and more engaging. Use HTML tags like <h1>, <h2>, <h3>, <strong>, <em>, <span style="color: #...">, <span style="font-size: ...">, etc. Avoid emojis. Include ALL images from the original content. Text START<<' + text + '>>Text END';
 
       chrome.runtime.sendMessage({ type: 'OPENAI_ENGAGIFY', prompt }, (res) => {
         hideLoadingScreen();
@@ -261,37 +271,68 @@ chrome.runtime.onMessage.addListener(async (msg) => {
         // Find the main content area and replace it
         const mainContent = document.querySelector('main, article, .content, .post, .entry, #content, .main-content') || document.body;
 
-        // Detect page theme colors
+        // Detect page theme colors and extract actual colors
         const bodyStyles = window.getComputedStyle(document.body);
         const backgroundColor = bodyStyles.backgroundColor;
         const textColor = bodyStyles.color;
         const isDarkTheme = backgroundColor.includes('rgb(0, 0, 0)') || backgroundColor.includes('rgb(17, 17, 17)') || backgroundColor.includes('rgb(24, 24, 27)');
         const isBlandTheme = textColor.includes('rgb(0, 0, 0)') && backgroundColor.includes('rgb(255, 255, 255)');
 
-        // Choose color scheme based on page theme
+        // Extract colors from page elements
+        const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        const links = document.querySelectorAll('a');
+        let pagePrimaryColor = '#2563eb';
+        let pageSecondaryColor = '#dc2626';
+        let pageAccentColor = '#059669';
+
+        // Try to extract colors from page elements
+        if (headings.length > 0) {
+          const headingColor = window.getComputedStyle(headings[0]).color;
+          if (headingColor && !headingColor.includes('rgb(0, 0, 0)')) {
+            pagePrimaryColor = headingColor;
+          }
+        }
+
+        if (links.length > 0) {
+          const linkColor = window.getComputedStyle(links[0]).color;
+          if (linkColor && !linkColor.includes('rgb(0, 0, 0)')) {
+            pageSecondaryColor = linkColor;
+          }
+        }
+
+        // Choose color scheme based on page theme with more diverse colors
         let themeColors = {
-          primary: '#2563eb',
-          secondary: '#dc2626',
-          accent: '#059669',
+          primary: '#8b5cf6', // Purple for headings
+          secondary: '#f59e0b', // Orange for bold text
+          accent: '#10b981', // Green for highlights
           background: '#ffffff',
-          text: '#1f2937'
+          text: '#374151'
         };
 
         if (isDarkTheme) {
           themeColors = {
-            primary: '#60a5fa',
-            secondary: '#f87171',
-            accent: '#34d399',
+            primary: '#a78bfa', // Light purple
+            secondary: '#fbbf24', // Light orange
+            accent: '#34d399', // Light green
             background: '#1f2937',
             text: '#f9fafb'
           };
         } else if (isBlandTheme) {
           themeColors = {
-            primary: '#059669',
-            secondary: '#dc2626',
-            accent: '#2563eb',
+            primary: '#059669', // Green
+            secondary: '#dc2626', // Red
+            accent: '#2563eb', // Blue
             background: '#f0fdf4',
             text: '#1f2937'
+          };
+        } else {
+          // Use diverse colors for colorful pages
+          themeColors = {
+            primary: '#8b5cf6', // Purple
+            secondary: '#f59e0b', // Orange
+            accent: '#10b981', // Green
+            background: '#ffffff',
+            text: '#374151'
           };
         }
 
@@ -361,12 +402,12 @@ chrome.runtime.onMessage.addListener(async (msg) => {
             color: ${themeColors.text};
           }
           #engagified-content a {
-            color: ${themeColors.primary};
+            color: #3b82f6;
             text-decoration: underline;
             font-weight: 600;
           }
           #engagified-content a:hover {
-            color: ${themeColors.primary};
+            color: #1d4ed8;
             text-decoration: none;
             opacity: 0.8;
           }
