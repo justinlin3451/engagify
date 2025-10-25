@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      max-width: 720px;
+      margin: 20px auto;
+      padding: 0 16px
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+      background: #fff
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--green-100);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Engagify — Settings</h2>
+  <div class="small">These settings are stored locally in your browser.</div>
+  <div class="separator"></div>
+
+
+  <div class="card">
+    <div class="badge">Engagify</div>
+    <label for="tone">Tone</label>
+    <select id="tone">
+      <option value="friendly">Friendly</option>
+      <option value="concise">Concise</option>
+      <option value="academic">Academic</option>
+      <option value="motivational">Motivational</option>
+      <option value="lighthearted">Lighthearted</option>
+    </select>
+
+    <label for="engMaxChars">Max characters to process (safety limit)</label>
+    <input type="number" id="engMaxChars" min="1000" max="20000" step="500">
+  </div>
+
+  <div class="card">
+    <div class="badge">Summarize</div>
+    <div class="row">
+      <div>
+        <label for="sumMode">Summary format</label>
+        <select id="sumMode">
+          <option value="sentences">Sentences</option>
+          <option value="bullets">Bullets</option>
+        </select>
+      </div>
+      <div>
+        <label for="sumCount">Count (sentences or bullets)</label>
+        <input type="number" id="sumCount" min="1" max="15">
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="saveBtn">Save</button>
+    <button id="resetBtn" class="secondary">Reset</button>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+
+</html>

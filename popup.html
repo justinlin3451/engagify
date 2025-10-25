@@ -1,0 +1,33 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body{width:280px; padding:16px; background:#fff}
+    .header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+    .logo{width:10px;height:10px;border-radius:50%;background:var(--green)}
+    .title{font-weight:800;letter-spacing:.2px}
+    .grid{display:grid;grid-template-columns:1fr;gap:10px}
+    .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo"></div>
+    <div class="title">Engagify</div>
+  </div>
+
+  <div class="grid">
+    <button id="engagifyBtn">Engagify</button>
+    <button id="summarizeBtn" class="secondary">Summarize</button>
+    <button id="customizeBtn" class="secondary">Customize</button>
+  </div>
+
+  <div class="hint">Runs only when you click. Clean green/white UI.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
