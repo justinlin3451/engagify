@@ -34,32 +34,38 @@ function collectPageText(maxChars = 20000) {
     }
   }
 
-  // Collect images (increase limit and prioritize content images)
-  const images = document.querySelectorAll('img[src]');
-  const contentImages = [];
-  const authorImages = [];
+  // Collect ALL images, tables, and graphs from the entire page
+  const images = document.querySelectorAll('img[src], svg, canvas');
+  const tables = document.querySelectorAll('table');
+  const charts = document.querySelectorAll('[class*="chart"], [class*="graph"], [id*="chart"], [id*="graph"]');
 
+  // Collect all images (no limit, include all)
   for (const img of images) {
-    const src = img.src;
-    const alt = img.alt || 'Image';
-    const parentText = img.parentElement?.textContent?.toLowerCase() || '';
-
-    // Separate content images from author/profile images
-    if (parentText.includes('author') || parentText.includes('profile') || parentText.includes('avatar') ||
-      alt.includes('author') || alt.includes('profile') || alt.includes('avatar')) {
-      authorImages.push({ src, alt });
-    } else {
-      contentImages.push({ src, alt });
+    const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+    const alt = img.alt || img.getAttribute('title') || 'Image';
+    if (src && !text.includes(src)) {
+      text += `\n[IMAGE: ${alt} -> ${src}]`;
+      imageCount++;
     }
   }
 
-  // Prioritize content images, limit author images
-  const allImages = [...contentImages, ...authorImages.slice(0, 2)];
-  for (const img of allImages) {
-    if (imageCount >= 10) break; // Increased limit
-    if (img.src && !text.includes(img.src)) {
-      text += `\n[IMAGE: ${img.alt} -> ${img.src}]`;
-      imageCount++;
+  // Collect all tables
+  for (const table of tables) {
+    const tableText = table.textContent.trim();
+    if (tableText && tableText.length > 10) {
+      text += `\n[TABLE: ${tableText}]`;
+    }
+  }
+
+  // Collect all charts/graphs
+  for (const chart of charts) {
+    const chartText = chart.textContent.trim();
+    const chartSrc = chart.querySelector('img')?.src || chart.getAttribute('data-src');
+    if (chartText && chartText.length > 5) {
+      text += `\n[CHART: ${chartText}]`;
+    }
+    if (chartSrc && !text.includes(chartSrc)) {
+      text += `\n[CHART_IMAGE: ${chartText} -> ${chartSrc}]`;
     }
   }
 
@@ -266,7 +272,29 @@ chrome.runtime.onMessage.addListener(async (msg) => {
 
         // Convert link and image markers back to proper HTML
         safe = safe.replace(/\[LINK: ([^\]]+) -> ([^\]]+)\]/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-        safe = safe.replace(/\[IMAGE: ([^\]]+) -> ([^\]]+)\]/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; margin: 10px 0;">');
+        safe = safe.replace(/\[IMAGE: ([^\]]+) -> ([^\]]+)\]/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">');
+        safe = safe.replace(/\[CHART_IMAGE: ([^\]]+) -> ([^\]]+)\]/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; margin: 15px 0; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">');
+
+        // Convert table markers to proper HTML tables
+        safe = safe.replace(/\[TABLE: ([^\]]+)\]/g, (match, tableContent) => {
+          const rows = tableContent.split('\n').filter(row => row.trim());
+          if (rows.length < 2) return match;
+
+          let tableHtml = '<table style="width: 100%; border-collapse: collapse; margin: 20px 0; border: 2px solid #8b5cf6;">';
+          rows.forEach((row, index) => {
+            const cells = row.split('\t').filter(cell => cell.trim());
+            if (cells.length > 0) {
+              const tag = index === 0 ? 'th' : 'td';
+              const style = index === 0 ? 'background-color: #8b5cf6; color: white; padding: 12px; font-weight: bold;' : 'padding: 12px; border: 1px solid #e5e7eb;';
+              tableHtml += `<tr><${tag} style="${style}">${cells.join(`</${tag}><${tag} style="${style}">`)}</${tag}></tr>`;
+            }
+          });
+          tableHtml += '</table>';
+          return tableHtml;
+        });
+
+        // Convert chart markers to proper HTML
+        safe = safe.replace(/\[CHART: ([^\]]+)\]/g, '<div style="background: #f8fafc; border: 2px solid #8b5cf6; border-radius: 8px; padding: 15px; margin: 15px 0; font-weight: bold; color: #8b5cf6;">📊 Chart: $1</div>');
 
         // Find the main content area and replace it
         const mainContent = document.querySelector('main, article, .content, .post, .entry, #content, .main-content') || document.body;
@@ -354,42 +382,42 @@ chrome.runtime.onMessage.addListener(async (msg) => {
           z-index: 1;
         `;
 
-        // Add enhanced CSS for better typography with dynamic colors
+        // Add enhanced CSS for better typography with diverse colors
         const style = document.createElement('style');
         style.textContent = `
           #engagified-content h1 {
             font-size: 2.5rem;
             font-weight: 800;
-            color: ${themeColors.primary};
+            color: #8b5cf6 !important;
             margin: 2rem 0 1rem 0;
             line-height: 1.2;
           }
           #engagified-content h2 {
             font-size: 2rem;
             font-weight: 700;
-            color: ${themeColors.primary};
+            color: #8b5cf6 !important;
             margin: 1.5rem 0 0.75rem 0;
             line-height: 1.3;
           }
           #engagified-content h3 {
             font-size: 1.5rem;
             font-weight: 600;
-            color: ${themeColors.primary};
+            color: #8b5cf6 !important;
             margin: 1.25rem 0 0.5rem 0;
             line-height: 1.4;
           }
           #engagified-content p {
             font-size: 1.1rem;
             margin: 1rem 0;
-            color: ${themeColors.text};
+            color: #374151;
           }
           #engagified-content strong {
             font-weight: 700;
-            color: ${themeColors.secondary};
+            color: #f59e0b !important;
           }
           #engagified-content em {
             font-style: italic;
-            color: ${themeColors.accent};
+            color: #10b981 !important;
             font-weight: 600;
           }
           #engagified-content ul, #engagified-content ol {
@@ -399,15 +427,15 @@ chrome.runtime.onMessage.addListener(async (msg) => {
           #engagified-content li {
             font-size: 1.1rem;
             margin: 0.5rem 0;
-            color: ${themeColors.text};
+            color: #374151;
           }
           #engagified-content a {
-            color: #3b82f6;
+            color: #3b82f6 !important;
             text-decoration: underline;
             font-weight: 600;
           }
           #engagified-content a:hover {
-            color: #1d4ed8;
+            color: #1d4ed8 !important;
             text-decoration: none;
             opacity: 0.8;
           }
@@ -417,6 +445,26 @@ chrome.runtime.onMessage.addListener(async (msg) => {
             margin: 15px 0;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          #engagified-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 2px solid #8b5cf6;
+          }
+          #engagified-content th {
+            background-color: #8b5cf6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+          }
+          #engagified-content td {
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+          }
+          #engagified-content tr:nth-child(even) {
+            background-color: #f9fafb;
           }
         `;
         document.head.appendChild(style);
