@@ -40,11 +40,11 @@ app.post('/api/summarize', async (req, res) => {
             body: JSON.stringify({
                 model: MODEL,
                 temperature: 0.3,
-                max_tokens: 2000,
+                max_tokens: 1500,
                 messages: [
                     {
                         role: 'system',
-                        content: 'You rewrite and summarize webpage text accurately, preserving facts. Keep formatting clean and minimal. Be concise but comprehensive.'
+                        content: 'Summarize webpage text accurately. Keep facts. Be concise.'
                     },
                     { role: 'user', content: prompt }
                 ]
@@ -83,31 +83,12 @@ app.post('/api/engagify', async (req, res) => {
             },
             body: JSON.stringify({
                 model: MODEL,
-                temperature: 0.5,
-                max_tokens: 4000,
+                temperature: 0.4,
+                max_tokens: 3000,
                 messages: [
                     {
                         role: 'system',
-                        content: `You are an expert content rewriter who transforms webpage content into engaging, well-formatted HTML while preserving ALL important information and following specific style instructions.
-
-CRITICAL REQUIREMENTS:
-1. Follow the EXACT tone style requested (concise/conversational/academic)
-2. Follow the EXACT color scheme requested (preserve original OR use green/grey scheme)
-3. PRESERVE ALL IMAGES: Convert every [IMAGE: ...] to <img src="..." alt="...">
-4. PRESERVE ALL LINKS: Convert every [LINK: text -> url] to <a href="url">text</a>
-5. PRESERVE ALL TABLES: Recreate with proper HTML <table> structure
-6. Include ALL factual content from the source
-7. Output ONLY clean HTML (NO code blocks, NO \`\`\`html tags, NO <style> tags, NO CSS)
-8. Use semantic HTML: <h1>, <h2>, <h3>, <p>, <strong>, <em>, <ul>, <ol>, <li>, <a>, <img>, <table>, <blockquote>
-9. Convert any **markdown bold** to <strong>HTML tags</strong>
-10. Make content visually scannable with proper heading hierarchy
-
-You will receive specific instructions about:
-- Tone (concise/conversational/academic) - follow this precisely
-- Color scheme (preserve original OR use green/grey) - follow this precisely
-- Image and link preservation requirements
-
-Your output must be clean, valid HTML that can be directly inserted into a webpage.`
+                        content: 'Rewrite webpage content engagingly. Follow tone (concise/conversational/academic) and color instructions exactly. Convert [IMAGE: desc -> url] to <img src="url" alt="desc">. Convert [LINK: text -> url] to <a href="url">text</a>. Keep ALL facts. Output ONLY HTML with tags: <h1> <h2> <h3> <p> <strong> <em> <ul> <li> <a> <img>. NO code blocks, NO <style> tags.'
                     },
                     { role: 'user', content: prompt }
                 ]
