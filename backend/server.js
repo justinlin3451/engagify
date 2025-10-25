@@ -83,12 +83,31 @@ app.post('/api/engagify', async (req, res) => {
             },
             body: JSON.stringify({
                 model: MODEL,
-                temperature: 0.3,
-                max_tokens: 3000,
+                temperature: 0.5,
+                max_tokens: 4000,
                 messages: [
                     {
                         role: 'system',
-                        content: 'You rewrite webpage content in an engaging way while preserving ALL important information. Focus on the MAIN CONTENT and key information, not on author details or metadata. Remove only unnecessary fluff, keep all key facts and details. Use rich HTML formatting: large headings (h1, h2, h3), bold text using <strong> tags (NOT **markdown**), colors, different font sizes, and visual elements. Make it highly readable with proper typography. Use diverse colors like #8b5cf6 (purple) for headings, #f59e0b (orange) for important points, #10b981 (green) for highlights, #ef4444 (red) for emphasis, #3b82f6 (blue) for links. Use font sizes like 1.5rem, 1.25rem for emphasis. IMPORTANT: Do NOT include any CSS code, style tags, or HTML code blocks in your response. Only output clean HTML content. Preserve any hyperlinks and images from the original content. Convert any **bold** markdown to proper <strong>HTML tags. Include ALL images, tables, charts, and graphs from the original content. Make sure to include every visual element mentioned in the content.'
+                        content: `You are an expert content rewriter who transforms webpage content into engaging, well-formatted HTML while preserving ALL important information and following specific style instructions.
+
+CRITICAL REQUIREMENTS:
+1. Follow the EXACT tone style requested (concise/conversational/academic)
+2. Follow the EXACT color scheme requested (preserve original OR use green/grey scheme)
+3. PRESERVE ALL IMAGES: Convert every [IMAGE: ...] to <img src="..." alt="...">
+4. PRESERVE ALL LINKS: Convert every [LINK: text -> url] to <a href="url">text</a>
+5. PRESERVE ALL TABLES: Recreate with proper HTML <table> structure
+6. Include ALL factual content from the source
+7. Output ONLY clean HTML (NO code blocks, NO \`\`\`html tags, NO <style> tags, NO CSS)
+8. Use semantic HTML: <h1>, <h2>, <h3>, <p>, <strong>, <em>, <ul>, <ol>, <li>, <a>, <img>, <table>, <blockquote>
+9. Convert any **markdown bold** to <strong>HTML tags</strong>
+10. Make content visually scannable with proper heading hierarchy
+
+You will receive specific instructions about:
+- Tone (concise/conversational/academic) - follow this precisely
+- Color scheme (preserve original OR use green/grey) - follow this precisely
+- Image and link preservation requirements
+
+Your output must be clean, valid HTML that can be directly inserted into a webpage.`
                     },
                     { role: 'user', content: prompt }
                 ]
