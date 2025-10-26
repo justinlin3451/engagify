@@ -1,5 +1,4 @@
-function collectPageText(maxChars = 15000) {
-  // First, try to find the main article content
+function collectPageText(maxChars = 12000) {
   const mainContentSelectors = [
     'article',
     '[role="main"]',
@@ -12,9 +11,9 @@ function collectPageText(maxChars = 15000) {
     '.story',
     '.post',
     '.article-body',
-    '.abstract-content',  // PubMed
-    '#abstract',          // PubMed
-    '.article-details'    // PubMed
+    '.abstract-content',
+    '#abstract',
+    '.article-details'
   ];
   
   let mainContainer = null;
@@ -26,12 +25,10 @@ function collectPageText(maxChars = 15000) {
     }
   }
   
-  // If no main container found, use body but filter more aggressively
   if (!mainContainer) {
     mainContainer = document.body;
   }
 
-  // Elements to exclude (cookie banners, ads, navigation, etc.)
   const excludeSelectors = [
     '[class*="cookie"]',
     '[id*="cookie"]',
@@ -57,10 +54,10 @@ function collectPageText(maxChars = 15000) {
     '[class*="share"]',
     '[class*="comment"]',
     '[role="complementary"]',
-    '[aria-label*="advertisement"]'
+    '[aria-label*="advertisement"]',
+    'iframe'
   ];
 
-  // Remove excluded elements temporarily
   const excludedElements = [];
   excludeSelectors.forEach(selector => {
     const elements = mainContainer.querySelectorAll(selector);
@@ -83,7 +80,6 @@ function collectPageText(maxChars = 15000) {
         return NodeFilter.FILTER_REJECT;
       }
       
-      // Skip if text looks like a button or label
       const text = node.nodeValue.toLowerCase();
       if (text.includes('click here') || text.includes('subscribe') || 
           text.includes('donate') || text.includes('sign up') ||
@@ -99,7 +95,6 @@ function collectPageText(maxChars = 15000) {
   let linkCount = 0;
   let imageCount = 0;
 
-  // Collect text content
   while (walker.nextNode() && text.length < maxChars) {
     const chunk = walker.currentNode.nodeValue.replace(/\s+/g, ' ').trim();
     if (chunk && chunk.length > 2) {
@@ -107,7 +102,6 @@ function collectPageText(maxChars = 15000) {
     }
   }
 
-  // Restore excluded elements
   excludedElements.reverse().forEach(({ element, parent, nextSibling }) => {
     if (parent) {
       if (nextSibling && nextSibling.parentNode === parent) {
@@ -118,11 +112,10 @@ function collectPageText(maxChars = 15000) {
     }
   });
 
-  // Collect links from main content only (limit to 5 for speed)
   if (mainContainer) {
     const links = mainContainer.querySelectorAll('a[href]');
     for (const link of links) {
-      if (linkCount >= 5) break;
+      if (linkCount >= 3) break;
       const href = link.href;
       const linkText = link.textContent.trim();
       if (href && linkText && linkText.length > 3 && !text.includes(href) && 
@@ -132,14 +125,21 @@ function collectPageText(maxChars = 15000) {
       }
     }
 
-    // Collect images from main content (limit to 8 for speed)
     const images = mainContainer.querySelectorAll('img[src]');
     for (const img of images) {
-      if (imageCount >= 8) break;
+      if (imageCount >= 5) break;
       const src = img.src || img.getAttribute('data-src');
       const alt = img.alt || 'Image';
-      if (src && !text.includes(src) && !src.includes('avatar') && !src.includes('icon')) {
-        text += `\n[IMAGE: ${alt} -> ${src}]`;
+      let context = '';
+      const parent = img.closest('figure, div, p');
+      if (parent) {
+        const caption = parent.querySelector('figcaption, .caption, .img-caption');
+        if (caption) {
+          context = caption.textContent.trim();
+        }
+      }
+      if (src && !src.includes('avatar') && !src.includes('icon')) {
+        text += `\n[IMAGE: ${alt} | Context: ${context || 'none'} -> ${src}]`;
         imageCount++;
       }
     }
@@ -210,11 +210,12 @@ function hideLoadingScreen() {
   if (el) el.remove();
 }
 
+let articleTextForChat = '';
+
 function ensureSidebar() {
   let el = document.getElementById('engagify-sidebar');
   if (el) return el;
   
-  // Load Lora font
   if (!document.querySelector('link[href*="Lora"]')) {
     const link = document.createElement('link');
     link.href = 'https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap';
@@ -224,7 +225,7 @@ function ensureSidebar() {
   
   el = document.createElement('div');
   el.id = 'engagify-sidebar';
-  el.style.cssText = `position:fixed; top:0; right:0; height:100vh; width:400px; background:#ffffff; border-left:1px solid #e2e8f0; box-shadow:-6px 0 14px rgba(0,0,0,.06); z-index:2147483647; padding:20px; overflow:auto; font-family: 'Lora', serif;`;
+  el.style.cssText = `position:fixed; top:0; right:0; height:100vh; width:420px; background:#ffffff; border-left:1px solid #e2e8f0; box-shadow:-6px 0 14px rgba(0,0,0,.06); z-index:2147483647; padding:20px; overflow:auto; font-family: 'Lora', serif;`;
   
   const hdr = document.createElement('div');
   hdr.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #156f3b";
@@ -243,16 +244,103 @@ function ensureSidebar() {
   content.id = 'engagify-sidebar-content';
   content.style.cssText = "font-size:16px;line-height:1.7;color:#1f2937;font-family:'Lora',serif";
   el.appendChild(content);
+  
+  const chatSection = document.createElement('div');
+  chatSection.id = 'engagify-chat-section';
+  chatSection.style.cssText = "margin-top:25px;padding-top:20px;border-top:2px solid #e2e8f0";
+  chatSection.innerHTML = `
+    <div style="font-weight:700;color:#156f3b;font-size:1.2rem;margin-bottom:12px">💬 Ask Questions</div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:10px">Ask follow-up questions about this article</div>
+    <div id="chat-messages" style="max-height:200px;overflow-y:auto;margin-bottom:10px;padding:10px;background:#f9fafb;border-radius:8px;font-size:14px"></div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="chat-input" placeholder="Ask a question..." style="flex:1;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-family:'Lora',serif;font-size:14px" />
+      <button id="chat-send" style="background:#156f3b;color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:700;transition:all 0.2s">Send</button>
+    </div>
+  `;
+  el.appendChild(chatSection);
 
   document.body.appendChild(el);
+  
+  setupChatbot();
+  
   return el;
+}
+
+function setupChatbot() {
+  const sendBtn = document.getElementById('chat-send');
+  const input = document.getElementById('chat-input');
+  const messages = document.getElementById('chat-messages');
+  
+  if (!sendBtn || !input || !messages) return;
+  
+  const sendMessage = async () => {
+    const question = input.value.trim();
+    if (!question) return;
+    
+    const userMsg = document.createElement('div');
+    userMsg.style.cssText = "margin-bottom:10px;text-align:right";
+    userMsg.innerHTML = `<div style="display:inline-block;background:#156f3b;color:white;padding:8px 12px;border-radius:8px;max-width:80%;font-size:13px">${question}</div>`;
+    messages.appendChild(userMsg);
+    
+    input.value = '';
+    messages.scrollTop = messages.scrollHeight;
+    
+    const typingMsg = document.createElement('div');
+    typingMsg.id = 'typing-indicator';
+    typingMsg.style.cssText = "margin-bottom:10px";
+    typingMsg.innerHTML = `<div style="display:inline-block;background:#f0fdf4;color:#156f3b;padding:8px 12px;border-radius:8px;font-size:13px">Thinking...</div>`;
+    messages.appendChild(typingMsg);
+    messages.scrollTop = messages.scrollHeight;
+    
+    const prompt = `You are a helpful AI assistant answering questions about an article. Be concise and helpful.
+
+Article content:
+${articleTextForChat}
+
+User question: ${question}
+
+Answer the question based on the article content. If the answer isn't in the article, say so politely.`;
+    
+    try {
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type: 'OPENAI_CHAT', prompt }, resolve);
+      });
+      
+      typingMsg.remove();
+      
+      const aiMsg = document.createElement('div');
+      aiMsg.style.cssText = "margin-bottom:10px";
+      aiMsg.innerHTML = `<div style="display:inline-block;background:#f0fdf4;color:#1f2937;padding:8px 12px;border-radius:8px;max-width:80%;font-size:13px">${response.ok ? response.output : 'Error: Could not get response'}</div>`;
+      messages.appendChild(aiMsg);
+      messages.scrollTop = messages.scrollHeight;
+    } catch (err) {
+      typingMsg.remove();
+      const errorMsg = document.createElement('div');
+      errorMsg.style.cssText = "margin-bottom:10px";
+      errorMsg.innerHTML = `<div style="display:inline-block;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:8px;max-width:80%;font-size:13px">Error: ${err.message}</div>`;
+      messages.appendChild(errorMsg);
+    }
+  };
+  
+  sendBtn.onclick = sendMessage;
+  input.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
 }
 
 chrome.runtime.onMessage.addListener(async (msg) => {
   if (msg.action === 'SUMMARIZE') {
-    chrome.storage.local.get({ sumMode: 'sentences', sumCount: 5, engMaxChars: 15000, tone: 'conversational' }, async (cfg) => {
+    chrome.storage.local.get({ sumMode: 'sentences', sumCount: 5, engMaxChars: 12000, tone: 'conversational' }, async (cfg) => {
       const text = collectPageText(cfg.engMaxChars);
-      if (!text || text.length < 60) { alert('Not enough readable text found on this page.'); return; }
+      
+      if (window.self !== window.top) {
+        return;
+      }
+      
+      if (!text || text.length < 60) { 
+        alert('Not enough readable text found on this page.'); 
+        return; 
+      }
+      
+      articleTextForChat = text;
 
       showLoadingScreen('Summarizing content...');
 
@@ -287,7 +375,6 @@ ${text}`;
         
         let out = (res.output || '').trim();
         
-        // Add CSS for summary styling
         if (!document.getElementById('summary-styles')) {
           const summaryStyle = document.createElement('style');
           summaryStyle.id = 'summary-styles';
@@ -344,13 +431,20 @@ ${text}`;
       });
     });
   } else if (msg.action === 'ENGAGIFY') {
-    chrome.storage.local.get({ tone: 'conversational', engMaxChars: 15000 }, async (cfg) => {
+    chrome.storage.local.get({ tone: 'conversational', engMaxChars: 12000 }, async (cfg) => {
       const text = collectPageText(cfg.engMaxChars);
-      if (!text || text.length < 60) { alert('Not enough readable text found on this page.'); return; }
+      
+      if (window.self !== window.top) {
+        return;
+      }
+      
+      if (!text || text.length < 60) { 
+        alert('Not enough readable text found on this page.'); 
+        return; 
+      }
 
       showLoadingScreen('Engagifying content...');
       
-      // Load Lora font
       if (!document.querySelector('link[href*="Lora"]')) {
         const link = document.createElement('link');
         link.href = 'https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap';
@@ -358,53 +452,30 @@ ${text}`;
         document.head.appendChild(link);
       }
 
-      // Build tone-specific instructions
       let toneInstruction = '';
       if (cfg.tone === 'concise') {
-        toneInstruction = 'CONCISE style: Short punchy sentences (8-12 words). Use bullet points frequently. Keep paragraphs to 2 sentences max. Make it scannable and quick to read.';
+        toneInstruction = 'CONCISE: 8-12 word sentences. Bullets. 2 sentence paragraphs max.';
       } else if (cfg.tone === 'academic') {
-        toneInstruction = 'ACADEMIC style: Use formal scholarly language with complex sentence structures. Include transitional phrases like "Furthermore," "Consequently," "In contrast." Maintain objective third-person perspective. Write longer paragraphs (5-7 sentences) with proper topic sentences.';
+        toneInstruction = 'ACADEMIC: Formal language. Complex sentences. Transitional phrases. 5-7 sentence paragraphs.';
       } else {
-        toneInstruction = 'CONVERSATIONAL style: Write like you\'re talking to a friend. Use "you" to address the reader. Include rhetorical questions. Vary sentence length - mix short punchy ones with longer explanatory sentences. Use contractions naturally (it\'s, you\'ll, we\'re). Make it engaging and relatable.';
+        toneInstruction = 'CONVERSATIONAL: Friendly. Use "you". Rhetorical questions. Varied sentences. Contractions.';
       }
 
-      // Enhanced prompt with engagement features
-      const prompt = `Rewrite this article in an extremely engaging way. ${toneInstruction}
+      const prompt = `Rewrite engagingly. ${toneInstruction}
 
-CRITICAL ENGAGEMENT FEATURES:
-1. START WITH TL;DR: Create a 2-sentence summary in a special box format like this:
-   <div class="tldr-box">📌 <strong>TL;DR:</strong> [2 sentence summary here]</div>
+MUST HAVE:
+1. TL;DR box: <div class="tldr-box">📌 <strong>TL;DR:</strong> [2 sentences]</div>
+2. Highlight 5-8 phrases: <mark class="highlight">[phrase]</mark>
+3. Green bold 10-15 words: <span class="green-bold">[word]</span>
+4. Callout boxes: <div class="callout-box">💡 [fact]</div>
+5. Big stats: <span class="big-stat">85%</span>
+6. Dividers: <div class="section-divider">✦ ✦ ✦</div>
+7. Short paragraphs (2-3 sentences)
+8. Image captions: For [IMAGE: alt | Context: context -> url], create <figure><img src="url" alt="alt"><figcaption>[smart caption based on context or alt]</figcaption></figure>
 
-2. HIGHLIGHT KEY PHRASES: Wrap 5-8 important phrases/concepts with:
-   <mark class="highlight">[key phrase]</mark>
+Colors: Headings GREEN #156f3b. Body text DARK. Output HTML only.
 
-3. GREEN BOLD WORDS: Make important action words, key terms, and impactful nouns GREEN and BOLD:
-   <span class="green-bold">[important word]</span>
-   Use this liberally - 10-15 times throughout!
-
-4. CALLOUT BOXES: For important quotes, facts, or statistics, use:
-   <div class="callout-box">💡 [Important fact or quote here]</div>
-
-5. LARGE STATISTICS: Make numbers/statistics BIG and eye-catching:
-   <span class="big-stat">85%</span>
-
-6. VISUAL DIVIDERS: Between major sections, add:
-   <div class="section-divider">✦ ✦ ✦</div>
-
-7. KEEP PARAGRAPHS SHORT: Maximum 2-3 sentences per paragraph for readability.
-
-FORMATTING RULES:
-- Headings: GREEN (#156f3b) using <h1>, <h2>, <h3>
-- Regular bold: <strong style="color: #0f5a31;">[text]</strong>
-- Links: GREEN (#156f3b)
-- Convert [IMAGE: desc -> url] to <img src="url" alt="desc">
-- Convert [LINK: text -> url] to <a href="url">[text]</a>
-- ALL body text must be DARK GREY/BLACK - never white
-- Output ONLY HTML (no code blocks, no markdown)
-
-Make this VISUALLY EXCITING and ENGAGING!
-
-Article content:
+Content:
 ${text}`;
 
       chrome.runtime.sendMessage({ type: 'OPENAI_ENGAGIFY', prompt }, (res) => {
@@ -416,35 +487,21 @@ ${text}`;
         
         let output = (res.output || '').trim();
         
-        // Clean up output
         output = output.replace(/```html\n?/g, '').replace(/```\n?/g, '');
         output = output.replace(/<style>[\s\S]*?<\/style>/gi, '');
         output = output.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
-        // Sanitize
         const safe = output
           .replace(/<script[\s\S]*?<\/script>/gi, '')
           .replace(/javascript:/gi, '')
           .replace(/on\w+\s*=/gi, '');
 
-        // Check if we got valid content
         if (!safe || safe.length < 100) {
-          alert('Error: Could not generate engagified content. The page structure might be too complex.');
+          alert('Error: Could not generate engagified content.');
           return;
         }
 
-        // Find main content - try multiple selectors for PubMed and other sites
-        const mainContentSelectors = [
-          'main',
-          'article', 
-          '.article-details',
-          '.content',
-          '.post',
-          '.entry',
-          '#content',
-          '.main-content',
-          'body'
-        ];
+        const mainContentSelectors = ['main', 'article', '.article-details', '.content', '.post', '.entry', '#content', '.main-content', 'body'];
         
         let mainContent = null;
         for (const selector of mainContentSelectors) {
@@ -455,11 +512,8 @@ ${text}`;
           }
         }
         
-        if (!mainContent) {
-          mainContent = document.body;
-        }
+        if (!mainContent) mainContent = document.body;
 
-        // Create container
         const engagifiedDiv = document.createElement('div');
         engagifiedDiv.id = 'engagified-content';
         engagifiedDiv.style.cssText = `
@@ -478,7 +532,6 @@ ${text}`;
           z-index: 1;
         `;
 
-        // Enhanced CSS with all engagement features
         const style = document.createElement('style');
         style.textContent = `
           #engagified-content {
@@ -488,7 +541,6 @@ ${text}`;
             color: #1f2937 !important;
           }
           
-          /* TL;DR Box */
           #engagified-content .tldr-box {
             background: linear-gradient(135deg, #e0f2e9 0%, #f0fdf4 100%);
             border-left: 5px solid #156f3b;
@@ -506,7 +558,6 @@ ${text}`;
             font-size: 1.25rem;
           }
           
-          /* Highlighted Key Phrases */
           #engagified-content mark.highlight {
             background: linear-gradient(120deg, #d4fc79 0%, #96e6a1 100%);
             padding: 2px 6px;
@@ -516,7 +567,6 @@ ${text}`;
             box-shadow: 0 1px 3px rgba(21, 111, 59, 0.15);
           }
           
-          /* Green Bold Words */
           #engagified-content .green-bold {
             color: #156f3b !important;
             font-weight: 800;
@@ -524,7 +574,6 @@ ${text}`;
             letter-spacing: 0.3px;
           }
           
-          /* Callout Boxes */
           #engagified-content .callout-box {
             background: #f0fdf4;
             border: 2px solid #156f3b;
@@ -539,7 +588,6 @@ ${text}`;
             font-family: 'Lora', serif;
           }
           
-          /* Large Statistics */
           #engagified-content .big-stat {
             font-size: 3rem;
             font-weight: 900;
@@ -550,7 +598,6 @@ ${text}`;
             text-shadow: 2px 2px 4px rgba(21, 111, 59, 0.1);
           }
           
-          /* Section Dividers */
           #engagified-content .section-divider {
             text-align: center;
             margin: 40px 0;
@@ -560,7 +607,6 @@ ${text}`;
             opacity: 0.6;
           }
           
-          /* Headings - Keep Inter for headers */
           #engagified-content h1,
           #engagified-content h2,
           #engagified-content h3,
@@ -590,7 +636,6 @@ ${text}`;
             margin: 1.5rem 0 0.5rem 0;
           }
           
-          /* Paragraphs */
           #engagified-content p {
             font-size: 1.15rem;
             margin: 1.25rem 0;
@@ -599,20 +644,17 @@ ${text}`;
             font-family: 'Lora', serif;
           }
           
-          /* Regular Strong */
           #engagified-content strong {
             font-weight: 700;
             color: #0f5a31 !important;
           }
           
-          /* Emphasis */
           #engagified-content em {
             font-style: italic;
             color: #6b7280 !important;
             font-weight: 600;
           }
           
-          /* Lists */
           #engagified-content ul, #engagified-content ol {
             margin: 1.5rem 0;
             padding-left: 2rem;
@@ -626,7 +668,6 @@ ${text}`;
             font-family: 'Lora', serif;
           }
           
-          /* Links */
           #engagified-content a {
             color: #156f3b !important;
             text-decoration: underline;
@@ -637,17 +678,27 @@ ${text}`;
             opacity: 0.7;
           }
           
-          /* Images */
+          #engagified-content figure {
+            margin: 30px 0;
+            text-align: center;
+          }
           #engagified-content img {
             max-width: 100%;
             height: auto;
-            margin: 25px auto;
             display: block;
+            margin: 0 auto;
             border-radius: 10px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
           }
+          #engagified-content figcaption {
+            margin-top: 10px;
+            font-size: 0.95rem;
+            color: #6b7280 !important;
+            font-style: italic;
+            font-family: 'Lora', serif;
+            text-align: center;
+          }
           
-          /* Tables */
           #engagified-content table {
             width: 100%;
             border-collapse: collapse;
@@ -677,7 +728,6 @@ ${text}`;
             background-color: rgba(21, 111, 59, 0.08);
           }
           
-          /* Blockquotes */
           #engagified-content blockquote {
             border-left: 4px solid #156f3b;
             padding-left: 24px;
@@ -688,7 +738,6 @@ ${text}`;
             font-family: 'Lora', serif;
           }
           
-          /* Horizontal Rules */
           #engagified-content hr {
             border: none;
             border-top: 2px solid #e5e7eb;
@@ -698,16 +747,13 @@ ${text}`;
         document.head.appendChild(style);
         engagifiedDiv.innerHTML = safe;
 
-        // For PubMed and similar sites, clear everything and insert fresh
         if (window.location.hostname.includes('pubmed')) {
-          // Clear the body content
           while (document.body.firstChild) {
             document.body.removeChild(document.body.firstChild);
           }
           document.body.appendChild(engagifiedDiv);
           document.body.appendChild(style);
         } else {
-          // Standard approach for other sites
           const originalContent = mainContent.cloneNode(true);
           originalContent.style.display = 'none';
           originalContent.id = 'original-content';
@@ -719,10 +765,11 @@ ${text}`;
           }
         }
 
-        // Restore button
-        const restoreBtn = document.createElement('button');
-        restoreBtn.textContent = 'Restore Original';
-        restoreBtn.style.cssText = `
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'engagify-toggle-btn';
+        toggleBtn.textContent = 'Restore Original';
+        toggleBtn.setAttribute('data-state', 'engagified');
+        toggleBtn.style.cssText = `
           position: fixed;
           top: 20px;
           right: 20px;
@@ -739,29 +786,39 @@ ${text}`;
           transition: all 0.2s;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         `;
-        restoreBtn.onmouseover = () => {
-          restoreBtn.style.background = '#0f5a31';
-          restoreBtn.style.transform = 'translateY(-2px)';
-          restoreBtn.style.boxShadow = '0 5px 15px rgba(21, 111, 59, 0.4)';
+        
+        toggleBtn.onmouseover = () => {
+          toggleBtn.style.background = '#0f5a31';
+          toggleBtn.style.transform = 'translateY(-2px)';
+          toggleBtn.style.boxShadow = '0 5px 15px rgba(21, 111, 59, 0.4)';
         };
-        restoreBtn.onmouseout = () => {
-          restoreBtn.style.background = '#156f3b';
-          restoreBtn.style.transform = 'translateY(0)';
-          restoreBtn.style.boxShadow = '0 3px 10px rgba(21, 111, 59, 0.3)';
+        toggleBtn.onmouseout = () => {
+          toggleBtn.style.background = '#156f3b';
+          toggleBtn.style.transform = 'translateY(0)';
+          toggleBtn.style.boxShadow = '0 3px 10px rgba(21, 111, 59, 0.3)';
         };
-        restoreBtn.onclick = () => {
-          if (window.location.hostname.includes('pubmed')) {
-            window.location.reload();
-          } else {
-            engagifiedDiv.remove();
-            const orig = document.getElementById('original-content');
-            if (orig) orig.remove();
+        
+        toggleBtn.onclick = () => {
+          const state = toggleBtn.getAttribute('data-state');
+          const engagified = document.getElementById('engagified-content');
+          const original = document.getElementById('original-content');
+          
+          if (state === 'engagified') {
+            if (engagified) engagified.style.display = 'none';
+            if (original) original.style.display = '';
             if (mainContent) mainContent.style.display = '';
-            restoreBtn.remove();
-            style.remove();
+            toggleBtn.textContent = 'Show Engagified';
+            toggleBtn.setAttribute('data-state', 'original');
+          } else {
+            if (engagified) engagified.style.display = '';
+            if (original) original.style.display = 'none';
+            if (mainContent) mainContent.style.display = 'none';
+            toggleBtn.textContent = 'Restore Original';
+            toggleBtn.setAttribute('data-state', 'engagified');
           }
         };
-        document.body.appendChild(restoreBtn);
+        
+        document.body.appendChild(toggleBtn);
       });
     });
   }

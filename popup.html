@@ -6,52 +6,121 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="styles.css">
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      width: 300px;
-      padding: 18px;
-      background: #fff;
+      width: 340px;
+      padding: 20px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
       position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle background animation */
+    body::before {
+      content: '';
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(21, 111, 59, 0.03) 0%, transparent 70%);
+      border-radius: 50%;
+      top: -50px;
+      right: -50px;
+      animation: float 8s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(-20px, 20px); }
     }
 
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
       border-bottom: 2px solid #e2e8f0;
+      position: relative;
+      z-index: 10;
     }
 
     .title-section {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      animation: slideInLeft 0.5s ease-out;
     }
 
+    @keyframes slideInLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* 1. Breathing logo animation */
     .logo {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--green);
+      width: 32px;
+      height: 32px;
+      animation: breathe 3s ease-in-out infinite;
+      filter: drop-shadow(0 2px 4px rgba(21, 111, 59, 0.2));
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
     }
 
     .title {
       font-weight: 800;
-      letter-spacing: .2px;
-      font-size: 18px;
-      color: var(--green);
+      letter-spacing: .3px;
+      font-size: 22px;
+      /* 12. Color shift animation */
+      background: linear-gradient(90deg, #156f3b, #10b981, #059669, #156f3b);
+      background-size: 300% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: colorShift 8s ease-in-out infinite;
+    }
+
+    @keyframes colorShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
     }
 
     .gear-btn {
       background: transparent;
       border: none;
       cursor: pointer;
-      padding: 6px;
+      padding: 8px;
       border-radius: 8px;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
       display: flex;
       align-items: center;
       justify-content: center;
+      animation: slideInRight 0.5s ease-out;
+      position: relative;
+    }
+
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
     }
 
     .gear-btn:hover {
@@ -60,32 +129,112 @@
     }
 
     .gear-icon {
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       fill: var(--green);
+      transition: fill 0.3s ease;
     }
 
     .button-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 14px;
+      margin-bottom: 14px;
+      position: relative;
+      z-index: 5;
     }
 
+    /* 3. Slide-in animation for buttons */
     .action-btn {
-      padding: 14px 10px;
+      padding: 16px 12px;
       border-radius: 10px;
       font-weight: 700;
-      font-size: 15px;
+      font-size: 16px;
       cursor: pointer;
       border: none;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      position: relative;
+      overflow: hidden;
+      animation: slideInUp 0.6s ease-out backwards;
+    }
+
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #engagifyBtn {
+      animation-delay: 0.1s;
+    }
+
+    #summarizeBtn {
+      animation-delay: 0.2s;
+    }
+
+    /* 5. Shimmer sweep effect */
+    .action-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn:hover::before {
+      left: 150%;
+    }
+
+    /* 7. Border animation on hover */
+    .action-btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border: 3px solid transparent;
+      border-radius: 10px;
+      transition: all 0.4s ease;
+    }
+
+    @keyframes borderDraw {
+      0% {
+        clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+      }
+      25% {
+        clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+      }
+      50% {
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%);
+      }
+      75% {
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+      }
+      100% {
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+      }
     }
 
     .engagify-btn {
       background: var(--green);
       color: white;
+      position: relative;
+    }
+
+    /* White border for Engagify button */
+    .engagify-btn:hover::after {
+      border-color: rgba(255, 255, 255, 0.8);
+      animation: borderDraw 0.8s ease-out;
     }
 
     .engagify-btn:hover {
@@ -100,17 +249,57 @@
       border: 2px solid var(--green);
     }
 
+    /* Green border for Summarize button */
+    .summarize-btn:hover::after {
+      border-color: rgba(21, 111, 59, 0.6);
+      animation: borderDraw 0.8s ease-out;
+    }
+
     .summarize-btn:hover {
       background: #f0fdf4;
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(21, 111, 59, 0.15);
     }
 
+    /* Ripple effect on click */
+    .action-btn:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    @keyframes ripple {
+      0% {
+        transform: scale(0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    .ripple-effect {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.6);
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+      animation: ripple 0.6s ease-out;
+    }
+
     .hint {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--muted);
       text-align: center;
-      line-height: 1.4;
+      line-height: 1.5;
+      animation: fadeIn 0.8s ease-out 0.3s backwards;
+      position: relative;
+      z-index: 5;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
   </style>
 </head>
@@ -118,7 +307,7 @@
 <body>
   <div class="header">
     <div class="title-section">
-      <div class="logo"></div>
+      <img src="icons/icon48.png" class="logo" alt="Engagify">
       <div class="title">Engagify</div>
     </div>
     <button id="customizeBtn" class="gear-btn" title="Customize">
@@ -136,6 +325,27 @@
   <div class="hint">Runs only when you click. Clean green/white UI.</div>
 
   <script src="popup.js"></script>
+  
+  <script>
+    // Add ripple effect on button click
+    document.querySelectorAll('.action-btn').forEach(button => {
+      button.addEventListener('click', function(e) {
+        const ripple = document.createElement('span');
+        ripple.classList.add('ripple-effect');
+        
+        const rect = this.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        
+        this.appendChild(ripple);
+        
+        setTimeout(() => ripple.remove(), 600);
+      });
+    });
+  </script>
 </body>
 
 </html>

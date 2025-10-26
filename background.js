@@ -1,4 +1,3 @@
-
 const BACKEND_URL = "http://localhost:3000";
 
 async function callBackend(endpoint, prompt) {
@@ -39,6 +38,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     } else if (msg.type === 'OPENAI_ENGAGIFY') {
       try {
         const output = await callBackend('engagify', msg.prompt);
+        sendResponse({ ok: true, output });
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message });
+      }
+    } else if (msg.type === 'OPENAI_CHAT') {
+      try {
+        const output = await callBackend('chat', msg.prompt);
         sendResponse({ ok: true, output });
       } catch (e) {
         sendResponse({ ok: false, error: e.message });

@@ -40,7 +40,7 @@ app.post('/api/summarize', async (req, res) => {
             body: JSON.stringify({
                 model: MODEL,
                 temperature: 0.3,
-                max_tokens: 1500,
+                max_tokens: 1200, // Reduced for speed
                 messages: [
                     {
                         role: 'system',
@@ -84,11 +84,11 @@ app.post('/api/engagify', async (req, res) => {
             body: JSON.stringify({
                 model: MODEL,
                 temperature: 0.4,
-                max_tokens: 3000,
+                max_tokens: 2500, // Reduced from 3000 for speed
                 messages: [
                     {
                         role: 'system',
-                        content: 'Rewrite webpage content engagingly. Follow tone (concise/conversational/academic) and color instructions exactly. Convert [IMAGE: desc -> url] to <img src="url" alt="desc">. Convert [LINK: text -> url] to <a href="url">text</a>. Keep ALL facts. Output ONLY HTML with tags: <h1> <h2> <h3> <p> <strong> <em> <ul> <li> <a> <img>. NO code blocks, NO <style> tags.'
+                        content: 'Rewrite webpage content engagingly. Follow tone and color instructions exactly. Convert [IMAGE: desc | Context: context -> url] to <figure><img src="url" alt="desc"><figcaption>[caption based on context/desc]</figcaption></figure>. Convert [LINK: text -> url] to <a href="url">text</a>. Keep ALL facts. Output ONLY HTML with tags: <h1> <h2> <h3> <p> <strong> <em> <ul> <li> <a> <img> <figure> <figcaption>. NO code blocks, NO <style> tags.'
                     },
                     { role: 'user', content: prompt }
                 ]
@@ -106,6 +106,50 @@ app.post('/api/engagify', async (req, res) => {
         res.json({ ok: true, output });
     } catch (error) {
         console.error('Engagify error:', error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Endpoint to handle chatbot
+app.post('/api/chat', async (req, res) => {
+    try {
+        const { prompt } = req.body;
+
+        if (!prompt) {
+            return res.status(400).json({ error: 'Prompt is required' });
+        }
+
+        const response = await fetch(OPENAI_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: MODEL,
+                temperature: 0.5,
+                max_tokens: 300, // Short responses for chat
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are a helpful assistant answering questions about an article. Be concise, friendly, and accurate. If the answer is not in the article, say so politely.'
+                    },
+                    { role: 'user', content: prompt }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`OpenAI API error: ${errorText}`);
+        }
+
+        const data = await response.json();
+        const output = data.choices?.[0]?.message?.content || '';
+
+        res.json({ ok: true, output });
+    } catch (error) {
+        console.error('Chat error:', error);
         res.status(500).json({ ok: false, error: error.message });
     }
 });

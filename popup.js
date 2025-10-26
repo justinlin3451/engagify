@@ -1,4 +1,3 @@
-
 document.getElementById('engagifyBtn').addEventListener('click', () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     chrome.tabs.sendMessage(tabs[0].id, { action: 'ENGAGIFY' }, (response) => {
@@ -14,6 +13,8 @@ document.getElementById('engagifyBtn').addEventListener('click', () => {
         });
       }
     });
+    // Close popup after clicking
+    window.close();
   });
 });
 
@@ -32,6 +33,8 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
         });
       }
     });
+    // Close popup after clicking
+    window.close();
   });
 });
 
