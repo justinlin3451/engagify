@@ -12,14 +12,6 @@ A powerful browser extension that transforms web pages into engaging, visually a
 - **Multiple Tones**: Concise, Conversational, Academic writing styles
 - **Loading Screens**: Visual feedback during processing
 
-## 🎨 Color Scheme
-
-- **Headings**: Purple (`#8b5cf6`)
-- **Bold Text**: Orange (`#f59e0b`)
-- **Highlights**: Green (`#10b981`)
-- **Links**: Blue (`#3b82f6`)
-- **Tables**: Purple headers with proper styling
-
 ## 🚀 Setup
 
 ### Backend Setup
