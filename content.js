@@ -244,51 +244,251 @@ function ensureSidebar() {
   content.id = 'engagify-sidebar-content';
   content.style.cssText = "font-size:16px;line-height:1.7;color:#1f2937;font-family:'Lora',serif";
   el.appendChild(content);
-  
-  const chatSection = document.createElement('div');
-  chatSection.id = 'engagify-chat-section';
-  chatSection.style.cssText = "margin-top:25px;padding-top:20px;border-top:2px solid #e2e8f0";
-  chatSection.innerHTML = `
-    <div style="font-weight:700;color:#156f3b;font-size:1.2rem;margin-bottom:12px">💬 Ask Questions</div>
-    <div style="font-size:13px;color:#6b7280;margin-bottom:10px">Ask follow-up questions about this article</div>
-    <div id="chat-messages" style="max-height:200px;overflow-y:auto;margin-bottom:10px;padding:10px;background:#f9fafb;border-radius:8px;font-size:14px"></div>
-    <div style="display:flex;gap:8px">
-      <input type="text" id="chat-input" placeholder="Ask a question..." style="flex:1;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-family:'Lora',serif;font-size:14px" />
-      <button id="chat-send" style="background:#156f3b;color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:700;transition:all 0.2s">Send</button>
-    </div>
-  `;
-  el.appendChild(chatSection);
 
   document.body.appendChild(el);
-  
-  setupChatbot();
   
   return el;
 }
 
-function setupChatbot() {
-  const sendBtn = document.getElementById('chat-send');
-  const input = document.getElementById('chat-input');
-  const messages = document.getElementById('chat-messages');
+// Floating chat bubble
+function createChatBubble() {
+  if (document.getElementById('engagify-chat-bubble')) return;
   
-  if (!sendBtn || !input || !messages) return;
+  if (!document.querySelector('link[href*="Lora"]')) {
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+  }
   
+  // Chat bubble button
+  const bubble = document.createElement('div');
+  bubble.id = 'engagify-chat-bubble';
+  bubble.style.cssText = `
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #156f3b, #10b981);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(21, 111, 59, 0.4);
+    z-index: 2147483646;
+    transition: all 0.3s ease;
+    animation: bubbleEntry 0.5s ease-out, bubblePulse 2s ease-in-out 1s infinite;
+  `;
+  
+  bubble.innerHTML = `
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H6L4 18V4H20V16Z" fill="white"/>
+      <path d="M7 9H17V11H7V9ZM7 6H17V8H7V6ZM7 12H14V14H7V12Z" fill="white"/>
+    </svg>
+  `;
+  
+  // Chat window (initially hidden)
+  const chatWindow = document.createElement('div');
+  chatWindow.id = 'engagify-chat-window';
+  chatWindow.style.cssText = `
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    width: 380px;
+    height: 500px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(21, 111, 59, 0.2);
+    z-index: 2147483646;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border: 2px solid #d1fae5;
+    transform-origin: bottom left;
+  `;
+  
+  // Chat header
+  const chatHeader = document.createElement('div');
+  chatHeader.style.cssText = `
+    background: linear-gradient(135deg, #156f3b, #10b981);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'Lora', serif;
+  `;
+  chatHeader.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H6L4 18V4H20V16Z" fill="white"/>
+        <path d="M7 9H17V11H7V9ZM7 6H17V8H7V6ZM7 12H14V14H7V12Z" fill="white"/>
+      </svg>
+      <span style="font-weight:700;font-size:18px;">Ask Questions</span>
+    </div>
+    <button id="chat-close-btn" style="background:transparent;border:none;color:white;font-size:24px;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:background 0.2s;">✕</button>
+  `;
+  
+  // Chat messages area
+  const chatMessages = document.createElement('div');
+  chatMessages.id = 'engagify-chat-messages';
+  chatMessages.style.cssText = `
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: #f9fafb;
+    font-family: 'Lora', serif;
+  `;
+  chatMessages.innerHTML = `
+    <div style="text-align:center;color:#6b7280;font-size:14px;padding:20px 0;">
+      👋 Hi! Ask me anything about this article.
+    </div>
+  `;
+  
+  // Chat input area
+  const chatInput = document.createElement('div');
+  chatInput.style.cssText = `
+    padding: 16px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 10px;
+  `;
+  chatInput.innerHTML = `
+    <input 
+      type="text" 
+      id="engagify-chat-input" 
+      placeholder="Type your question..." 
+      style="flex:1;padding:12px;border:2px solid #d1fae5;border-radius:10px;font-family:'Lora',serif;font-size:14px;transition:border-color 0.2s;"
+    />
+    <button 
+      id="engagify-chat-send" 
+      style="background:linear-gradient(135deg, #156f3b, #10b981);color:white;border:none;padding:12px 20px;border-radius:10px;cursor:pointer;font-weight:700;transition:all 0.2s;font-family:'Lora',serif;font-size:14px;"
+    >Send</button>
+  `;
+  
+  chatWindow.appendChild(chatHeader);
+  chatWindow.appendChild(chatMessages);
+  chatWindow.appendChild(chatInput);
+  
+  // Add animations
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes bubbleEntry {
+      from {
+        transform: scale(0);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes bubblePulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(21, 111, 59, 0.4);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(21, 111, 59, 0.6);
+      }
+    }
+    
+    @keyframes chatExpand {
+      from {
+        transform: scale(0);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes chatCollapse {
+      from {
+        transform: scale(1);
+        opacity: 1;
+      }
+      to {
+        transform: scale(0);
+        opacity: 0;
+      }
+    }
+    
+    #engagify-chat-bubble:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(21, 111, 59, 0.6);
+    }
+    
+    #engagify-chat-input:focus {
+      outline: none;
+      border-color: #156f3b;
+    }
+    
+    #engagify-chat-send:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(21, 111, 59, 0.4);
+    }
+    
+    #chat-close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  `;
+  document.head.appendChild(style);
+  
+  document.body.appendChild(bubble);
+  document.body.appendChild(chatWindow);
+  
+  // Toggle chat window
+  let isOpen = false;
+  bubble.addEventListener('click', () => {
+    if (!isOpen) {
+      bubble.style.display = 'none';
+      chatWindow.style.display = 'flex';
+      chatWindow.style.animation = 'chatExpand 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+      isOpen = true;
+    }
+  });
+  
+  // Close chat
+  const closeChat = () => {
+    chatWindow.style.animation = 'chatCollapse 0.3s ease-in';
+    setTimeout(() => {
+      chatWindow.style.display = 'none';
+      bubble.style.display = 'flex';
+      isOpen = false;
+    }, 300);
+  };
+  
+  document.getElementById('chat-close-btn').addEventListener('click', closeChat);
+  
+  // Send message functionality
   const sendMessage = async () => {
+    const input = document.getElementById('engagify-chat-input');
+    const messages = document.getElementById('engagify-chat-messages');
     const question = input.value.trim();
+    
     if (!question) return;
     
+    // Add user message
     const userMsg = document.createElement('div');
-    userMsg.style.cssText = "margin-bottom:10px;text-align:right";
-    userMsg.innerHTML = `<div style="display:inline-block;background:#156f3b;color:white;padding:8px 12px;border-radius:8px;max-width:80%;font-size:13px">${question}</div>`;
+    userMsg.style.cssText = "margin-bottom:12px;text-align:right;animation:slideIn 0.3s ease-out;";
+    userMsg.innerHTML = `<div style="display:inline-block;background:#156f3b;color:white;padding:10px 14px;border-radius:12px;max-width:80%;font-size:14px;font-family:'Lora',serif;">${question}</div>`;
     messages.appendChild(userMsg);
     
     input.value = '';
     messages.scrollTop = messages.scrollHeight;
     
+    // Typing indicator
     const typingMsg = document.createElement('div');
     typingMsg.id = 'typing-indicator';
-    typingMsg.style.cssText = "margin-bottom:10px";
-    typingMsg.innerHTML = `<div style="display:inline-block;background:#f0fdf4;color:#156f3b;padding:8px 12px;border-radius:8px;font-size:13px">Thinking...</div>`;
+    typingMsg.style.cssText = "margin-bottom:12px;animation:slideIn 0.3s ease-out;";
+    typingMsg.innerHTML = `<div style="display:inline-block;background:#f0fdf4;color:#156f3b;padding:10px 14px;border-radius:12px;font-size:14px;font-family:'Lora',serif;">Thinking...</div>`;
     messages.appendChild(typingMsg);
     messages.scrollTop = messages.scrollHeight;
     
@@ -309,21 +509,39 @@ Answer the question based on the article content. If the answer isn't in the art
       typingMsg.remove();
       
       const aiMsg = document.createElement('div');
-      aiMsg.style.cssText = "margin-bottom:10px";
-      aiMsg.innerHTML = `<div style="display:inline-block;background:#f0fdf4;color:#1f2937;padding:8px 12px;border-radius:8px;max-width:80%;font-size:13px">${response.ok ? response.output : 'Error: Could not get response'}</div>`;
+      aiMsg.style.cssText = "margin-bottom:12px;animation:slideIn 0.3s ease-out;";
+      aiMsg.innerHTML = `<div style="display:inline-block;background:#f0fdf4;color:#1f2937;padding:10px 14px;border-radius:12px;max-width:80%;font-size:14px;font-family:'Lora',serif;">${response.ok ? response.output : 'Error: Could not get response'}</div>`;
       messages.appendChild(aiMsg);
       messages.scrollTop = messages.scrollHeight;
     } catch (err) {
       typingMsg.remove();
       const errorMsg = document.createElement('div');
-      errorMsg.style.cssText = "margin-bottom:10px";
-      errorMsg.innerHTML = `<div style="display:inline-block;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:8px;max-width:80%;font-size:13px">Error: ${err.message}</div>`;
+      errorMsg.style.cssText = "margin-bottom:12px;animation:slideIn 0.3s ease-out;";
+      errorMsg.innerHTML = `<div style="display:inline-block;background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:12px;max-width:80%;font-size:14px;font-family:'Lora',serif;">Error: ${err.message}</div>`;
       messages.appendChild(errorMsg);
     }
   };
   
-  sendBtn.onclick = sendMessage;
-  input.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+  document.getElementById('engagify-chat-send').addEventListener('click', sendMessage);
+  document.getElementById('engagify-chat-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+  
+  // Add slide animation for messages
+  const messageStyle = document.createElement('style');
+  messageStyle.textContent = `
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  `;
+  document.head.appendChild(messageStyle);
 }
 
 chrome.runtime.onMessage.addListener(async (msg) => {
@@ -341,6 +559,9 @@ chrome.runtime.onMessage.addListener(async (msg) => {
       }
       
       articleTextForChat = text;
+      
+      // Create chat bubble when summarizing
+      createChatBubble();
 
       showLoadingScreen('Summarizing content...');
 
@@ -442,6 +663,11 @@ ${text}`;
         alert('Not enough readable text found on this page.'); 
         return; 
       }
+      
+      articleTextForChat = text;
+      
+      // Create chat bubble when engagifying
+      createChatBubble();
 
       showLoadingScreen('Engagifying content...');
       
